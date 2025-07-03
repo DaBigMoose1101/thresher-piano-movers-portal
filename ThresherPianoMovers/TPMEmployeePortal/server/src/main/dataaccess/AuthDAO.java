@@ -1,6 +1,6 @@
 package main.dataaccess;
 
-import model.AuthData;
+import main.model.AuthData;
 
 public interface AuthDAO {
     public void addAuthToken(AuthData token) throws DataAccessException;
