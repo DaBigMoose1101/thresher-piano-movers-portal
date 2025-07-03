@@ -28,9 +28,10 @@ public class Server {
         Spark.post("/user", this::register);
         Spark.post("/session", this::login);
         Spark.delete("/session", this::logout);
-        Spark.post("/game", this::createGame);
-        Spark.get("/game", this::getGameList);
-        Spark.put("/game", this::joinGame);
+        Spark.post("/storage", this::addItem);
+        Spark.get("/storage", this::getItem);
+        Spark.put("/storage", this::moveItem);
+        Spark.delete("/storage", this::removeItem);
         Spark.delete("/db", this::clearServer);
 
         Spark.awaitInitialization();
@@ -58,21 +59,25 @@ public class Server {
 
     }
 
-    private Object createGame(Request req, Response res){
-        GameHandler handler = new GameHandler(authDataAccess, gameDataAccess, res);
+    private Object addItem(Request req, Response res){
+        StorageHandler handler = new StorageHandler(authDataAccess, gameDataAccess, res);
         return handler.createGame(req.headers("authorization"), req.body());
     }
 
-    private Object joinGame(Request req, Response res){
+    private Object moveItem(Request req, Response res){
         GameHandler handler = new GameHandler(authDataAccess, gameDataAccess, res);
         return handler.joinGame(req.headers("authorization"), req.body());
     }
 
-    private Object getGameList(Request req, Response res){
+    private Object getItem(Request req, Response res){
         GameHandler handler = new GameHandler(authDataAccess, gameDataAccess, res);
         return handler.getGameList(req.headers("authorization"));
     }
 
+    private Object removeItem(Request req, Response res){
+
+        return res;
+    }
     private Object clearServer(Request req, Response res){
         DatabaseAdminHandler handler = new DatabaseAdminHandler(authDataAccess, userDataAccess, gameDataAccess, res);
         return handler.deleteDB();
