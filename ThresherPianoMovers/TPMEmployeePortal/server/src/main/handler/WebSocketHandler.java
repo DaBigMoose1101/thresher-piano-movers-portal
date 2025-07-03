@@ -1,22 +1,15 @@
 package main.handler;
 
-import chess.ChessGame;
-import chess.ChessMove;
-import chess.ChessPosition;
+
+
 import com.google.gson.Gson;
-import dataaccess.AuthDAO;
-import dataaccess.GameDAO;
-import model.GameData;
-import org.eclipse.jetty.websocket.api.*;
-import org.eclipse.jetty.websocket.api.annotations.*;
-import server.ConnectionManager;
-import service.WebSocketService;
-import websocket.commands.MakeMoveCommand;
-import websocket.commands.UserGameCommand;
-import websocket.messages.ErrorMessage;
-import websocket.messages.LoadGameMessage;
-import websocket.messages.NotificationMessage;
-import websocket.messages.ServerMessage;
+import main.dataaccess.AuthDAO;
+import main.server.ConnectionManager;
+import org.eclipse.jetty.websocket.api.Session;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
+import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,102 +17,18 @@ import java.util.ArrayList;
 @WebSocket
 public class WebSocketHandler {
     static AuthDAO authDataAccess;
-    static GameDAO gameDataAccess;
     static ConnectionManager connections = new ConnectionManager();
     private Gson serializer = new Gson();
     private int gameId;
     private boolean check;
 
-    public static void initialize(AuthDAO auth, GameDAO game){
+    public static void initialize(AuthDAO auth){
         authDataAccess = auth;
-        gameDataAccess = game;
+
     }
     @OnWebSocketMessage
     public void onMessage(Session session, String message){
-        WebSocketService service = new WebSocketService(authDataAccess, gameDataAccess);
-        UserGameCommand com = serializer.fromJson(message, UserGameCommand.class);
-        gameId = com.getGameID();
-        ServerMessage serverMessage;
-        String user;
-        GameData game;
-        try {
-            switch (com.getCommandType()) {
-                case CONNECT:
-                    serverMessage = service.connectPlayer(session, com);
-                    user = service.getUser();
-                    if(serverMessage.getServerMessageType() == ServerMessage.ServerMessageType.LOAD_GAME){
-                        game = ((LoadGameMessage) serverMessage).getGame();
-                        connections.addConnection(gameId, session);
-                        String position = "observer";
-                        if(game.whiteUsername()!= null && game.whiteUsername().equals(user)){
-                            position = "white";
-                        }
-                        else if(game.blackUsername()!= null &&game.blackUsername().equals(user)){
-                            position = "black";
-                        }
-                        NotificationMessage note = new NotificationMessage(user + " joined the game as " + position);
-                        notifyConnections(note, session, gameId);
-                        sendMessage(session, serverMessage);
-                    }
-                    else{
-                        sendMessage(session, serverMessage);
-                    }
-                    break;
-                case LEAVE:
-                    serverMessage = service.leave(session, com);
-                    if(serverMessage.getServerMessageType() == ServerMessage.ServerMessageType.NOTIFICATION){
-                        connections.removeSession(gameId, session);
-                        notifyConnections(serverMessage, session, gameId);
-                    }
-                    else{
-                        sendMessage(session, serverMessage);
-                    }
-                    break;
-                case MAKE_MOVE:
-                    MakeMoveCommand comm = new Gson().fromJson(message, MakeMoveCommand.class);
-                    serverMessage = service.makeMove(session, comm);
-                    user = service.getUser();
-                    ChessMove move = comm.getMove();
-                    if(serverMessage.getServerMessageType() == ServerMessage.ServerMessageType.LOAD_GAME){
-                        GameData g = service.getGame();
-                        NotificationMessage note = getNotification(user, move, g);
-                        notifyConnections(serverMessage, session, gameId);
-                        notifyConnections(note, session, gameId);
-                        sendMessage(session, serverMessage);
-                        if(check){
-                            sendMessage(session, note);
-                        }
-                        check = false;
 
-                    }
-                    else{
-                        sendMessage(session, serverMessage);
-                    }
-                    break;
-                case RESIGN:
-                    serverMessage = service.resign(session, com);
-                    if(serverMessage.getServerMessageType() == ServerMessage.ServerMessageType.NOTIFICATION){
-                        notifyConnections(serverMessage, session, gameId);
-                        sendMessage(session, serverMessage);
-                    }
-                    else{
-                        sendMessage(session, serverMessage);
-                    }
-                    break;
-                default:
-                    serverMessage = new ErrorMessage("Error: Invalid request");
-                    sendMessage(session, serverMessage);
-            }
-        }
-         catch (Exception e) {
-            ErrorMessage err = new ErrorMessage(e.getMessage());
-            try{
-                sendMessage(session, err);
-            }
-            catch (IOException ex) {
-                throw new RuntimeException(ex.getMessage());
-            }
-        }
     }
 
     @OnWebSocketConnect

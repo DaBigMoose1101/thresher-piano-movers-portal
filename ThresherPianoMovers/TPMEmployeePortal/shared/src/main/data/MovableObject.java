@@ -8,7 +8,11 @@ public class MovableObject {
         babyGrand,
         parlorGrand,
         semiConcertGrand,
-        concertGrand
+        concertGrand,
+        smallSafe,
+        medSafe,
+        lrgSafe,
+        xlSafe
     }
 
     public MovableObject(Type type){
